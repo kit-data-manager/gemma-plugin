@@ -29,8 +29,8 @@ import org.springframework.context.annotation.Configuration;
 @Data
 public class GemmaConfiguration extends GenericPluginProperties{
 
-  @Value("#{${repo.plugin.gemma.schemaMapping}}")
-  private Map<String, String> schemaMapping;
+  @Value("#{${repo.plugin.gemma.schemaMappings}}")
+  private Map<String, String> schemaMappings;
 
   @Value("${repo.plugin.gemma.mappingsLocation}")
   private String mappingsLocation;

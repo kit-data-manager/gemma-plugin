@@ -85,7 +85,7 @@ public class GemmaHandler implements IMessageHandler{
     String mappingsLocation = gemmaConfiguration.getMappingsLocation();
 
     LOGGER.trace("Checking for configured mappings.");
-    Map<String, String> mappings = gemmaConfiguration.getSchemaMapping();
+    Map<String, String> mappings = gemmaConfiguration.getSchemaMappings();
     boolean mappingError = true;
     if(mappingsLocation != null && mappings != null){
       LOGGER.trace("Mappings found in configuration, checking mapping files.");
@@ -157,7 +157,7 @@ public class GemmaHandler implements IMessageHandler{
 
     String contentType = "application/vnd.datamanager.data-resource+json";
     if(!hasMapping(contentType)){
-      LOGGER.trace("No mapping found for data resource content type {}. Configured mappings are: {}.", contentType, gemmaConfiguration.getSchemaMapping());
+      LOGGER.trace("No mapping found for data resource content type {}. Configured mappings are: {}.", contentType, gemmaConfiguration.getSchemaMappings());
       return RESULT.REJECTED;
     }
 
@@ -218,7 +218,7 @@ public class GemmaHandler implements IMessageHandler{
     String contentType = message.getMetadata().get("contentType");
     LOGGER.trace("Checking for mapping file for content type {}.", contentType);
     if(!hasMapping(contentType)){
-      LOGGER.trace("No mapping found for content type {}. Configured mappings are: {}.", contentType, gemmaConfiguration.getSchemaMapping());
+      LOGGER.trace("No mapping found for content type {}. Configured mappings are: {}.", contentType, gemmaConfiguration.getSchemaMappings());
       return RESULT.REJECTED;
     }
 
@@ -299,7 +299,7 @@ public class GemmaHandler implements IMessageHandler{
    * @return TRUE if a mapping exists, FALSE otherwise.
    */
   private boolean hasMapping(String contentType){
-    return gemmaConfiguration.getSchemaMapping().containsKey(contentType);
+    return gemmaConfiguration.getSchemaMappings().containsKey(contentType);
   }
 
   /**
@@ -313,7 +313,7 @@ public class GemmaHandler implements IMessageHandler{
    * @return The mapping file location.
    */
   private Path getMappingFile(String contentType){
-    return Paths.get(gemmaConfiguration.getMappingsLocation(), gemmaConfiguration.getSchemaMapping().get(contentType));
+    return Paths.get(gemmaConfiguration.getMappingsLocation(), gemmaConfiguration.getSchemaMappings().get(contentType));
   }
 
   /**
