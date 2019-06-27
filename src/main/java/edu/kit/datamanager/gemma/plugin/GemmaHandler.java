@@ -64,18 +64,25 @@ public class GemmaHandler implements IMessageHandler{
   private GemmaConfiguration gemmaConfiguration;
 
   @Override
-  public String getHandlerIdentifier(){
-    return IMessageHandler.super.getHandlerIdentifier();
-  }
-
-  @Override
   public boolean configure(){
     String baseUrl = gemmaConfiguration.getRepositoryBaseUrl();
+
+    if(gemmaConfiguration.getGemmaLocation() == null){
+      LOGGER.trace("Gemma location is missing. Unable to configure handler.");
+      return false;
+    }
+    LOGGER.trace("Checking Gemma location property {}.", gemmaConfiguration.getGemmaLocation());
     Path gemmaPath = Paths.get(gemmaConfiguration.getGemmaLocation());
 
     boolean gemmaFound = Files.exists(gemmaPath) && Files.isReadable(gemmaPath);
 
+    if(gemmaConfiguration.getPythonLocation() == null){
+      LOGGER.trace("Python location is missing. Unable to configure handler.");
+      return false;
+    }
+
     Path pythonPath = Paths.get(gemmaConfiguration.getPythonLocation());
+
     boolean pythonFound = PythonUtils.run(gemmaConfiguration.getPythonLocation(), "--version") == 0;
 
     if(!pythonFound){
@@ -83,6 +90,11 @@ public class GemmaHandler implements IMessageHandler{
     }
 
     String mappingsLocation = gemmaConfiguration.getMappingsLocation();
+
+    if(mappingsLocation == null){
+      LOGGER.trace("Mappings location is missing. Unable to configure handler.");
+      return false;
+    }
 
     LOGGER.trace("Checking for configured mappings.");
     Map<String, String> mappings = gemmaConfiguration.getSchemaMappings();
@@ -163,7 +175,7 @@ public class GemmaHandler implements IMessageHandler{
 
     RestTemplate restTemplate = new RestTemplate();
     HttpHeaders headers = new HttpHeaders();
-    headers.setAccept(Arrays.asList(ContentInformation.CONTENT_INFORMATION_MEDIA_TYPE));
+    //headers.setAccept(Arrays.asList(ContentInformation.CONTENT_INFORMATION_MEDIA_TYPE));
 
     HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(headers);
     String destinationUri = gemmaConfiguration.getRepositoryBaseUrl() + message.getEntityId();
@@ -215,7 +227,7 @@ public class GemmaHandler implements IMessageHandler{
   private RESULT handleContentInformationEvent(BasicMessage message){
     //obtain content type
     LOGGER.trace("Calling handleContentInformationEvent({}),", message);
-    String contentType = message.getMetadata().get("contentType");
+    String contentType = message.getMetadata().get(DataResourceMessage.CONTENT_TYPE_PROPERTY);
     LOGGER.trace("Checking for mapping file for content type {}.", contentType);
     if(!hasMapping(contentType)){
       LOGGER.trace("No mapping found for content type {}. Configured mappings are: {}.", contentType, gemmaConfiguration.getSchemaMappings());

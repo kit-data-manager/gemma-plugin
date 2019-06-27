@@ -18,27 +18,24 @@ package edu.kit.datamanager.gemma.configuration;
 import edu.kit.datamanager.configuration.GenericPluginProperties;
 import java.util.Map;
 import lombok.Data;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.context.annotation.Configuration;
 
 /**
  *
  * @author jejkal
  */
+@ConfigurationProperties(prefix = "repo.plugin.gemma")
 @Configuration
 @Data
 public class GemmaConfiguration extends GenericPluginProperties{
 
-  @Value("#{${repo.plugin.gemma.schemaMappings}}")
   private Map<String, String> schemaMappings;
 
-  @Value("${repo.plugin.gemma.mappingsLocation}")
   private String mappingsLocation;
 
-  @Value("${repo.plugin.gemma.pythonLocation}")
   private String pythonLocation;
 
-  @Value("${repo.plugin.gemma.gemmaLocation}")
   private String gemmaLocation;
 
 }
