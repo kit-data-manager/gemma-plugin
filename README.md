@@ -90,11 +90,12 @@ Thus, the according property inside 'application.properties' should look as foll
 
 ```
 [...]
-repo.plugin.gemma.schemaMappings:{'application/vnd.datamanager.data-resource+json':'simple_mapping.json'}
+repo.plugin.gemma.schemaMappings[application/vnd.datamanager.data-resource+json]:simple_mapping.json
 [...]
 ```
 
-You see the content type which is mapped to the mapping file we just created and which has to be located at the 'mappingsLocation' folder.
+The configuration entry maps the content type 'application/vnd.datamanager.data-resource+json' to the mapping file 'simple_mapping.json' 
+which has to be present at the 'mappingsLocation' folder.
 
 ## License
 
