@@ -175,7 +175,7 @@ public class GemmaHandler implements IMessageHandler{
 
     RestTemplate restTemplate = new RestTemplate();
     HttpHeaders headers = new HttpHeaders();
-    //headers.setAccept(Arrays.asList(ContentInformation.CONTENT_INFORMATION_MEDIA_TYPE));
+    headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
 
     HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(headers);
     String destinationUri = gemmaConfiguration.getRepositoryBaseUrl() + message.getEntityId();
