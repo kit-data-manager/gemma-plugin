@@ -16,9 +16,13 @@
 package edu.kit.datamanager.gemma.plugin;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import edu.kit.datamanager.clients.SimpleRepositoryClient;
+import edu.kit.datamanager.clients.SingleResourceAccessClient;
+import edu.kit.datamanager.clients.UploadClient;
 import edu.kit.datamanager.entities.messaging.BasicMessage;
 import edu.kit.datamanager.entities.messaging.DataResourceMessage;
 import edu.kit.datamanager.entities.repo.ContentInformation;
+import edu.kit.datamanager.entities.repo.DataResource;
 import edu.kit.datamanager.gemma.configuration.GemmaConfiguration;
 import edu.kit.datamanager.gemma.util.PythonUtils;
 import edu.kit.datamanager.messaging.client.handler.IMessageHandler;
@@ -133,6 +137,11 @@ public class GemmaHandler implements IMessageHandler{
   public RESULT handle(BasicMessage message){
     RESULT result = RESULT.REJECTED;
 
+    if(!MessageHandlerUtils.isAddressed(getHandlerIdentifier(), message)){
+      LOGGER.trace("Handler {} is not addressed by message with addressees {}. Rejecting message.", getHandlerIdentifier(), message.getAddressees());
+      return result;
+    }
+
     if(DataResourceMessage.SUB_CATEGORY.DATA.getValue().equals(message.getSubCategory())){
       //Check uploader for handlerIdentifier() to avoid recursion.
       String pathProperty = message.getMetadata().get(DataResourceMessage.CONTENT_PATH_PROPERTY);
@@ -173,29 +182,25 @@ public class GemmaHandler implements IMessageHandler{
       return RESULT.REJECTED;
     }
 
-    RestTemplate restTemplate = new RestTemplate();
-    HttpHeaders headers = new HttpHeaders();
-    headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+    SingleResourceAccessClient client = SimpleRepositoryClient.createClient(gemmaConfiguration.getRepositoryBaseUrl()).withResourceId(message.getEntityId());
+    String theResource = client.getResourceAsString();
 
-    HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(headers);
-    String destinationUri = gemmaConfiguration.getRepositoryBaseUrl() + message.getEntityId();
-
-    UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(destinationUri);
-
-    destinationUri = uriBuilder.toUriString();
-
-    LOGGER.trace("Performing HTTP GET to {}.", destinationUri);
-    ResponseEntity<String> response = restTemplate.exchange(destinationUri, HttpMethod.GET, requestEntity, String.class);
+//    RestTemplate restTemplate = new RestTemplate();
+//    HttpHeaders headers = new HttpHeaders();
+//    headers.setAccept(Arrays.asList(MediaType.APPLICATION_JSON));
+//
+//    HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(headers);
+//    String destinationUri = gemmaConfiguration.getRepositoryBaseUrl() + message.getEntityId();
+//
+//    UriComponentsBuilder uriBuilder = UriComponentsBuilder.fromHttpUrl(destinationUri);
+//
+//    destinationUri = uriBuilder.toUriString();
+//
+//    LOGGER.trace("Performing HTTP GET to {}.", destinationUri);
+    // ResponseEntity<String> response = restTemplate.exchange(destinationUri, HttpMethod.GET, requestEntity, String.class);
     Path metadataPath = Paths.get(System.getProperty("java.io.tmpdir"), message.getEntityId() + "_metadata.json");
 
-    if(HttpStatus.OK.equals(response.getStatusCode())){
-      LOGGER.trace("Getting data resource from response body.");
-      String theResource = response.getBody();
-      if(theResource == null){
-        LOGGER.error("Did not receive any resource in the response body. Unable to continue.");
-        return RESULT.FAILED;
-      }
-
+    if(theResource != null){
       try{
         LOGGER.trace("Writing data resource to temporary file {}.", metadataPath);
         new FileOutputStream(metadataPath.toFile()).write(theResource.getBytes());
@@ -203,13 +208,32 @@ public class GemmaHandler implements IMessageHandler{
         LOGGER.error("Failed to write data resource to temporary file.", ex);
         return RESULT.FAILED;
       }
-
-      //transform file
     } else{
-      LOGGER.error("Request to resource with identifier {} returned status {}. Message handling failed.", message.getEntityId(), response.getStatusCode());
+      LOGGER.error("Did not receive any resource in the response body. Unable to continue.");
       return RESULT.FAILED;
     }
 
+//    if(HttpStatus.OK.equals(response.getStatusCode())){
+//      LOGGER.trace("Getting data resource from response body.");
+//      String theResource = response.getBody();
+//      if(theResource == null){
+//        LOGGER.error("Did not receive any resource in the response body. Unable to continue.");
+//        return RESULT.FAILED;
+//      }
+//
+//      try{
+//        LOGGER.trace("Writing data resource to temporary file {}.", metadataPath);
+//        new FileOutputStream(metadataPath.toFile()).write(theResource.getBytes());
+//      } catch(IOException ex){
+//        LOGGER.error("Failed to write data resource to temporary file.", ex);
+//        return RESULT.FAILED;
+//      }
+//
+//      //transform file
+//    } else{
+//      LOGGER.error("Request to resource with identifier {} returned status {}. Message handling failed.", message.getEntityId(), response.getStatusCode());
+//      return RESULT.FAILED;
+//    }
     return applyAndUploadMapping(metadataPath.toUri(), contentType, message.getEntityId(), message.getEntityId() + "_metadata.json");
   }
 
@@ -344,42 +368,40 @@ public class GemmaHandler implements IMessageHandler{
   private boolean uploadContent(String resourceId, String filename, URI localFileUri) throws IOException{
     LOGGER.trace("Performing uploadContent({}, {}, {}, {}).", resourceId, filename, localFileUri);
 
-    RestTemplate restTemplate = new RestTemplate();
-
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-
-    LOGGER.trace("Adding file param for local URI {}.", localFileUri);
-    MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-    body.add("file", new FileSystemResource(new File(localFileUri)));
-    LOGGER.trace("Building content metadata.");
+    // RestTemplate restTemplate = new RestTemplate();
+    //  HttpHeaders headers = new HttpHeaders();
+    // headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+    //  LOGGER.trace("Adding file param for local URI {}.", localFileUri);
+    //  MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+    //  body.add("file", new FileSystemResource(new File(localFileUri)));
+    //  LOGGER.trace("Building content metadata.");
     ContentInformation info = new ContentInformation();
     LOGGER.trace("Setting uploader to handler identifier {}.", getHandlerIdentifier());
     info.setUploader(getHandlerIdentifier());
+
+    UploadClient client = SimpleRepositoryClient.createClient(gemmaConfiguration.getRepositoryBaseUrl()).withResourceId(resourceId).withFile(new File(localFileUri)).withMetadata(info);
 
 //    Map<String, String> metadata = new HashMap<>();
 //   
 //    LOGGER.trace("Setting metadata {} to content information.", metadata);
 //    info.setMetadata(metadata);
-    String contentMetadataString = new ObjectMapper().writeValueAsString(info);
-    Path metadataPath = Paths.get(System.getProperty("java.io.tmpdir"), "metadata.json");
-    LOGGER.trace("Writing content metadata to file {}.", metadataPath);
-    Files.write(metadataPath, contentMetadataString.getBytes());
-    LOGGER.trace("Adding content metadata file {} to request.", metadataPath);
-    body.add("metadata", new FileSystemResource(metadataPath.toFile()));
-    HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-    String destinationUri = gemmaConfiguration.getRepositoryBaseUrl() + resourceId + "/data/" + filename;
-
+    // String contentMetadataString = new ObjectMapper().writeValueAsString(info);
+    // Path metadataPath = Paths.get(System.getProperty("java.io.tmpdir"), "metadata.json");
+    // LOGGER.trace("Writing content metadata to file {}.", metadataPath);
+    //  Files.write(metadataPath, contentMetadataString.getBytes());
+    //  LOGGER.trace("Adding content metadata file {} to request.", metadataPath);
+    //  body.add("metadata", new FileSystemResource(metadataPath.toFile()));
+    //  HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
+    //  String destinationUri = gemmaConfiguration.getRepositoryBaseUrl() + resourceId + "/data/" + filename;
     //add 'force' param in case of an update
-    UriComponentsBuilder uriBuilder = UriComponentsBuilder.
-            fromHttpUrl(destinationUri).
-            queryParam("force", Boolean.TRUE);
-
-    destinationUri = uriBuilder.toUriString();
-
-    LOGGER.trace("Performing HTTP POST to {}.", destinationUri);
-    ResponseEntity<String> response = restTemplate.postForEntity(destinationUri, requestEntity, String.class);
-    LOGGER.trace("Content upload returned with response {}.", response);
-    return HttpStatus.CREATED.equals(response.getStatusCode());
+    // UriComponentsBuilder uriBuilder = UriComponentsBuilder.
+    //         fromHttpUrl(destinationUri).
+    //         queryParam("force", Boolean.TRUE);
+    // destinationUri = uriBuilder.toUriString();
+    // LOGGER.trace("Performing HTTP POST to {}.", destinationUri);
+    // ResponseEntity<String> response = restTemplate.postForEntity(destinationUri, requestEntity, String.class);
+    return client.upload(filename) == 201;
+    //LOGGER.trace("Content upload returned with response {}.", response);
+    // return HttpStatus.CREATED.equals(response.getStatusCode());
   }
 }
