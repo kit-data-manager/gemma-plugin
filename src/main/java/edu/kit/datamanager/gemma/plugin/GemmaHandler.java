@@ -15,14 +15,12 @@
  */
 package edu.kit.datamanager.gemma.plugin;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import edu.kit.datamanager.clients.SimpleRepositoryClient;
-import edu.kit.datamanager.clients.SingleResourceAccessClient;
+import edu.kit.datamanager.clients.SimpleServiceClient;
 import edu.kit.datamanager.clients.UploadClient;
+import edu.kit.datamanager.clients.impl.SimpleRepositoryClient;
 import edu.kit.datamanager.entities.messaging.BasicMessage;
 import edu.kit.datamanager.entities.messaging.DataResourceMessage;
 import edu.kit.datamanager.entities.repo.ContentInformation;
-import edu.kit.datamanager.entities.repo.DataResource;
 import edu.kit.datamanager.gemma.configuration.GemmaConfiguration;
 import edu.kit.datamanager.gemma.util.PythonUtils;
 import edu.kit.datamanager.messaging.client.handler.IMessageHandler;
@@ -35,25 +33,15 @@ import java.net.URI;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.Set;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.FileSystemResource;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
-import org.springframework.util.LinkedMultiValueMap;
-import org.springframework.util.MultiValueMap;
-import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriComponentsBuilder;
 
 /**
  *
@@ -182,8 +170,7 @@ public class GemmaHandler implements IMessageHandler{
       return RESULT.REJECTED;
     }
 
-    SingleResourceAccessClient client = SimpleRepositoryClient.createClient(gemmaConfiguration.getRepositoryBaseUrl()).withResourceId(message.getEntityId());
-    String theResource = client.getResourceAsString();
+    String theResource = SimpleServiceClient.create(gemmaConfiguration.getRepositoryBaseUrl()).withResourcePath(message.getEntityId()).accept(MediaType.TEXT_PLAIN).getResource(String.class);
 
 //    RestTemplate restTemplate = new RestTemplate();
 //    HttpHeaders headers = new HttpHeaders();
@@ -367,41 +354,11 @@ public class GemmaHandler implements IMessageHandler{
    */
   private boolean uploadContent(String resourceId, String filename, URI localFileUri) throws IOException{
     LOGGER.trace("Performing uploadContent({}, {}, {}, {}).", resourceId, filename, localFileUri);
-
-    // RestTemplate restTemplate = new RestTemplate();
-    //  HttpHeaders headers = new HttpHeaders();
-    // headers.setContentType(MediaType.MULTIPART_FORM_DATA);
-    //  LOGGER.trace("Adding file param for local URI {}.", localFileUri);
-    //  MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
-    //  body.add("file", new FileSystemResource(new File(localFileUri)));
-    //  LOGGER.trace("Building content metadata.");
     ContentInformation info = new ContentInformation();
     LOGGER.trace("Setting uploader to handler identifier {}.", getHandlerIdentifier());
     info.setUploader(getHandlerIdentifier());
 
-    UploadClient client = SimpleRepositoryClient.createClient(gemmaConfiguration.getRepositoryBaseUrl()).withResourceId(resourceId).withFile(new File(localFileUri)).withMetadata(info);
-
-//    Map<String, String> metadata = new HashMap<>();
-//   
-//    LOGGER.trace("Setting metadata {} to content information.", metadata);
-//    info.setMetadata(metadata);
-    // String contentMetadataString = new ObjectMapper().writeValueAsString(info);
-    // Path metadataPath = Paths.get(System.getProperty("java.io.tmpdir"), "metadata.json");
-    // LOGGER.trace("Writing content metadata to file {}.", metadataPath);
-    //  Files.write(metadataPath, contentMetadataString.getBytes());
-    //  LOGGER.trace("Adding content metadata file {} to request.", metadataPath);
-    //  body.add("metadata", new FileSystemResource(metadataPath.toFile()));
-    //  HttpEntity<MultiValueMap<String, Object>> requestEntity = new HttpEntity<>(body, headers);
-    //  String destinationUri = gemmaConfiguration.getRepositoryBaseUrl() + resourceId + "/data/" + filename;
-    //add 'force' param in case of an update
-    // UriComponentsBuilder uriBuilder = UriComponentsBuilder.
-    //         fromHttpUrl(destinationUri).
-    //         queryParam("force", Boolean.TRUE);
-    // destinationUri = uriBuilder.toUriString();
-    // LOGGER.trace("Performing HTTP POST to {}.", destinationUri);
-    // ResponseEntity<String> response = restTemplate.postForEntity(destinationUri, requestEntity, String.class);
-    return client.upload(filename) == 201;
-    //LOGGER.trace("Content upload returned with response {}.", response);
-    // return HttpStatus.CREATED.equals(response.getStatusCode());
+    HttpStatus status = SimpleRepositoryClient.create(gemmaConfiguration.getRepositoryBaseUrl()).uploadData(resourceId, filename, new File(localFileUri), info);
+    return HttpStatus.CREATED.equals(status);
   }
 }
