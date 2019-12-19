@@ -16,7 +16,6 @@
 package edu.kit.datamanager.gemma.plugin;
 
 import edu.kit.datamanager.clients.SimpleServiceClient;
-import edu.kit.datamanager.clients.UploadClient;
 import edu.kit.datamanager.clients.impl.SimpleRepositoryClient;
 import edu.kit.datamanager.entities.messaging.BasicMessage;
 import edu.kit.datamanager.entities.messaging.DataResourceMessage;
@@ -358,7 +357,7 @@ public class GemmaHandler implements IMessageHandler{
     LOGGER.trace("Setting uploader to handler identifier {}.", getHandlerIdentifier());
     info.setUploader(getHandlerIdentifier());
 
-    HttpStatus status = SimpleRepositoryClient.create(gemmaConfiguration.getRepositoryBaseUrl()).uploadData(resourceId, filename, new File(localFileUri), info);
+    HttpStatus status = SimpleRepositoryClient.create(gemmaConfiguration.getRepositoryBaseUrl()).uploadData(resourceId, filename, new File(localFileUri), info, true);
     return HttpStatus.CREATED.equals(status);
   }
 }
