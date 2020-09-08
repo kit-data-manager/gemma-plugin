@@ -46,7 +46,7 @@ dependencies {
    // This dependency is used internally, and not exposed to consumers on their own compile classpath.
    implementation 'com.google.guava:guava:27.0.1-jre'
    implementation 'edu.kit.datamanager:service-base:0.1'
-   implementation('edu.kit.datamanager:generic-message-consumer:0.1.0')
+   implementation('edu.kit.datamanager:generic-message-consumer:0.1')
 
    // Use JUnit test framework
    testImplementation 'junit:junit:4.12'
